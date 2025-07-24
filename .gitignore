@@ -5,3 +5,4 @@ project/
 .metals/
 **/obj_dir/
 .vscode/
+tmp/

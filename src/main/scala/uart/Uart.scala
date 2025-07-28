@@ -6,7 +6,7 @@ import chisel3.util._
 class UartTx(freq:Int = 125000000, baud:Int = 1500000 ) extends Module {
   val io = IO(new Bundle {
     val txd = Output(Bool())
-    val in = Decoupled(UInt(8.W))
+    val in = Flipped(Decoupled(UInt(8.W)))
   })
   object State extends ChiselEnum {
     val IDLE,DATA = Value
@@ -37,6 +37,7 @@ class UartTx(freq:Int = 125000000, baud:Int = 1500000 ) extends Module {
   }.elsewhen(state === DATA) {
     def next_data_cnt(cnt4data:UInt):UInt = {
       val res = Wire(UInt(8.W))
+      res := 0xff.U
       switch(cnt4data) {
         is(0x00.U) { res := 0x01.U }
         is(0x01.U) { res := 0x02.U }
@@ -99,9 +100,8 @@ class UartTx(freq:Int = 125000000, baud:Int = 1500000 ) extends Module {
     }
   }
   //hands shake logic
-  val changable = Wire(Bool())
-  changable := state === IDLE || 
-    state === DATA && data_cnt === 0xff.U && cnt === (max_cycle-1).U
-  io.in.ready := changable
+  val busy = Wire(Bool())
+  busy := state === DATA && (data_cnt =/= 0xff.U || data_cnt === 0xff.U && cnt =/= (max_cycle-1).U)
+  io.in.ready := !busy
   trigger := io.in.fire
 }

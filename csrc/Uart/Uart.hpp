@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include<stdint.h>
+
 class UartRxSim {
 public:
     UartRxSim() = delete;
@@ -101,52 +102,73 @@ private:
 
 class UartTxSim {
 public:
+    uint64_t get_max_cycle() {
+        return max_cycle;
+    }
     uint64_t current_time() {
         return sim_time;
+    }
+    uint8_t get_txd() {
+        return txd;
     }
     UartTxSim() = delete;
     UartTxSim(const UartTxSim&) = delete;
     UartTxSim& operator=(const UartTxSim&) = delete;
-    uint64_t sim_time =0;
-    uint64_t stored_time =0;
-    uint8_t txd =1;    
     UartTxSim(int freq = 125000000, int baud = 115200) {
         this ->freq = freq;
         this ->baud = baud;
         this ->max_cycle = (uint64_t)freq / baud;
     }
-
-    void setData(uint8_t data) {
-        this ->post_data = data;
-        this ->busy =1;
-        this -> tx_data = (post_data & 0xff) << 1 | 0x0 | (0x1 << 9); // Start bit + data bits + stop bit
+    void post_byte(uint8_t data){
+        if(state == BUSY) {
+            printf("UartTxSim is busy, cannot post new data\n");
+            return;
+        }
+        state = BUSY;
+        data_byte = data;
+        data_10t = ( (data_byte << 1) | (0x0) | (0x1 << 9) ) ;
+        clock_cnt = 0;
     }
-
+    void reset() {
+        state = IDLE;
+        statecnt = 0;
+        clock_cnt = 0;
+    }
     void run() {
-        sim_time++;
-        if(busy ==1){
-            this ->txd = (tx_data >> statecnt) & 0x1; // Get the current bit to transmit
-            if(sim_time - stored_time == max_cycle){
-                stored_time = sim_time;
-                if(statecnt == 9){
-                    busy =0; // Transmission complete
-                    statecnt = 0;
-                }else{
-                    statecnt++;
-                }
-            }
-            
+        sim_time ++;
+        if(state == IDLE) {
+            txd=1;
         }else {
-            this ->txd = 1;
+            //busy
+            clock_cnt++;
+            txd = ( data_10t >> (statecnt) ) & 0x1;
+            if(clock_cnt == max_cycle-1) {
+                printf("at cycle %lu: clock_cnt count full\n", sim_time);
+                clock_cnt = 0;
+                if(statecnt < 9) {
+                    statecnt += 1;
+                }else {
+                    state = IDLE;
+                    statecnt = 0;
+                }
+            }                        
         }
     }
 
 private:
+    enum state_t {
+        IDLE,
+        BUSY
+    };
     int freq; // Frequency of the UART clock
     int baud; // Baud rate for UART communication
     uint64_t max_cycle = 0;
-    uint8_t post_data =0;
-    uint16_t tx_data =0;
-    uint8_t busy = 0; // 0 for idle, 1 for busy
-    int statecnt=0;
+    uint64_t sim_time = 0;
+    uint8_t txd = 1;
+    uint8_t state = IDLE ;
+    uint8_t data_byte = 0;
+    uint64_t data_10t;
+    // 0 for start bit, 1-8 for data bits, 9 for stop bit
+    int statecnt = 0;
+    uint64_t clock_cnt = 0;
 };

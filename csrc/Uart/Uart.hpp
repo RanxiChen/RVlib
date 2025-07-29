@@ -21,7 +21,8 @@ public:
     }
     void notify() {
         // This function can be used to notify the system that new data is available
-        printf("Sim Uart get data:%d\n",data);
+        //printf("Sim Uart get data:%d\n",data);
+        ;
     }
     void run () {
         sim_time++;
@@ -135,6 +136,8 @@ public:
                 }
             }
             
+        }else {
+            this ->txd = 1;
         }
     }
 

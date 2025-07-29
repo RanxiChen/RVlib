@@ -1,4 +1,6 @@
 #include "Uart.hpp"
+#include "common.hpp"
+#include <iostream>
 
 int main(void) {
     printf("SimUart start\n");
@@ -8,15 +10,11 @@ int main(void) {
     UartRxSim rxsim(125000000, 115200,&(txsim.txd));
     uint64_t max_cycle = (uint64_t)125000000 / 115200;
     uint8_t pdata=1;
-    for(int i = 0; i < 256; i++) {
-        txsim.setData(i);
-        for(int j = 0; j < 10*max_cycle; j++) {
-            txsim.run();
-            if(txsim.txd != pdata) {
-                pdata = txsim.txd;
-                printf("At cycle:%d Tx.txd:%d\n", txsim.current_time(),pdata);
-            }
-            rxsim.run();
-        }
-    }
+    uint64_t ptime = 0;
+    printf("losely_div %d , %d = %d ( really %d)\n", 1152*3-2 , 1152, loosely_div(1252*3-2, 1152), (1152*3-2) / 1152);
+    printf("max_cycle = %lu\n", max_cycle);
+    WaveDrom wave_watcher;
+    wave_watcher.singlewave2json("Tx","0101010");
+    wave_watcher.dump2console();
+    return 0;
 }

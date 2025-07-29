@@ -7,10 +7,15 @@ int main(void) {
     UartTxSim txsim(125000000, 115200);
     UartRxSim rxsim(125000000, 115200,&(txsim.txd));
     uint64_t max_cycle = (uint64_t)125000000 / 115200;
+    uint8_t pdata=1;
     for(int i = 0; i < 256; i++) {
         txsim.setData(i);
-        for(int j = 0; j < 2*max_cycle; j++) {
+        for(int j = 0; j < 10*max_cycle; j++) {
             txsim.run();
+            if(txsim.txd != pdata) {
+                pdata = txsim.txd;
+                printf("At cycle:%d Tx.txd:%d\n", txsim.current_time(),pdata);
+            }
             rxsim.run();
         }
     }

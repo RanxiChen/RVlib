@@ -33,6 +33,7 @@ public:
                 statecnt = 0;
                 stored_time = sim_time;
                 data = 0;
+                data_valid = 0;
                 return;
             }else {
                 busy = 0;
@@ -65,7 +66,7 @@ public:
                     }
                 }else if(statecnt < 9) {
                     // Data bits
-                    data = bit_after_vote << statecnt | data;
+                    data = bit_after_vote << (statecnt-1) | data;
                     statecnt++;
                 }else if(statecnt == 9) {
                     // Stop bit
@@ -99,12 +100,15 @@ private:
 
 class UartTxSim {
 public:
+    uint64_t current_time() {
+        return sim_time;
+    }
     UartTxSim() = delete;
     UartTxSim(const UartTxSim&) = delete;
     UartTxSim& operator=(const UartTxSim&) = delete;
     uint64_t sim_time =0;
     uint64_t stored_time =0;
-    uint8_t txd =0;    
+    uint8_t txd =1;    
     UartTxSim(int freq = 125000000, int baud = 115200) {
         this ->freq = freq;
         this ->baud = baud;
@@ -114,7 +118,7 @@ public:
     void setData(uint8_t data) {
         this ->post_data = data;
         this ->busy =1;
-        this -> tx_data = (post_data & 0xff) << 1 | 0x1 | (0x1 << 9); // Start bit + data bits + stop bit
+        this -> tx_data = (post_data & 0xff) << 1 | 0x0 | (0x1 << 9); // Start bit + data bits + stop bit
     }
 
     void run() {

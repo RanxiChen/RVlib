@@ -3,6 +3,7 @@
 using json = nlohmann::json;
 #include <iostream>
 #include <fstream>
+#include <utility>
 template<typename T>
 T loosely_div(T dividend, T divisor) {
     T lquotient = dividend / divisor;
@@ -20,8 +21,16 @@ T loosely_div(T dividend, T divisor) {
     }
 }
 
+typedef std::vector<std::pair<char,int>> SignalLane;
 class WaveDrom {
     public:
+        std::string signallane2wave(SignalLane & lane) {
+            std::string wave;
+            for(auto it:lane) {
+                wave.append(it.second, it.first);
+            }
+            return wave;
+        }
         void singlewave2json( std::string signal_name, std::string wave_contents) {
             json item;
             item["name"] = signal_name;

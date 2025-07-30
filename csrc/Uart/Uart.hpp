@@ -12,6 +12,7 @@ public:
         this ->baud = baud;
         this ->max_cycle = (uint64_t)freq / baud;
         this ->get_rxd = rxd_func;
+        if(!silent)printf("max cycle:%lu\n",max_cycle);
     }
     uint8_t getData() {
         return data;
@@ -19,10 +20,24 @@ public:
     uint8_t isDataValid() {
         return data_valid;
     }
+    void setSilent(uint8_t silent) {
+        this ->silent = silent;
+    }
     void notify() {
         // This function can be used to notify the system that new data is available
         printf("Sim Uart get data:%x at %lu cycles\n",data,sim_time);
         ;
+    }
+    void reset() {
+        busy = 0;
+        statecnt = 0;
+        stored_time = 0;
+        data = 0;
+        data_valid = 0;
+        vote0 = 0;
+        vote1 = 0;
+        vote2 = 0;
+        bit_after_vote = 0;
     }
     void run () {
         sim_time++;
@@ -51,12 +66,15 @@ public:
             }else if(sim_time - stored_time == max_cycle*3/4) {
                 vote2 = rxd;
             }else if(sim_time - stored_time == max_cycle) {
+                if(!silent)printf("At rx cycle %lu ", sim_time);
                 stored_time = sim_time;
                 if(vote0 + vote1 + vote2 >= 2) {
                     bit_after_vote = 1;
                 }else {
                     bit_after_vote = 0;
                 }
+                if(!silent)printf("get bit %d,",bit_after_vote);
+                if(!silent)printf("state switch from %d ",statecnt);
                 if(statecnt == 0) {
                     // Start bit
                     if(bit_after_vote == 0) {
@@ -80,6 +98,7 @@ public:
                     busy = 0; // Transmission complete
                     statecnt = 0; // Reset state counter
                 }
+                if(!silent)printf("to %d\n",statecnt);
             }
         }
     }
@@ -98,6 +117,7 @@ private:
     uint8_t vote2 = 0;
     uint8_t bit_after_vote = 0;
     uint8_t (*get_rxd)() = NULL; // Function pointer to get rxd value
+    uint8_t silent = 0; // 1 for silent, 0 for debug
 };
 
 class UartTxSim {
@@ -128,7 +148,7 @@ public:
         data_byte = data;
         data_10t = ( (data_byte << 1) | (0x0) | (0x1 << 9) ) ;
         clock_cnt = 0;
-        if(! silent)printf("current data_10t is %x\n",data_10t);
+        if(! silent)printf("current data_10t is %x\n",(int)data_10t);
     }
     void reset() {
         state = IDLE;

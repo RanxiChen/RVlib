@@ -16,23 +16,25 @@ class Uart_Clock_Generator extends Module {
         val tx_in_valid = Output(Bool())
         val tx_in_bits = Output(UInt(8.W))
     })
+    //after shakehands, switch to next
     val dataReg = RegInit(0.U(8.W))
-    dataReg := 0xff.U
-    val TxModule = Module(new UartTx(freq =125000000, baud = 115200))
-    io.tx_in_ready := TxModule.io.in.ready
-    io.tx_in_valid := TxModule.io.in.valid
-    io.tx_in_bits := TxModule.io.in.bits
-    io.tx_state := TxModule.io.state
-    io.tx_sub_state := TxModule.io.sub_state
-    io.tx_post_data := TxModule.io.post_data
-    io.tx_cnt := TxModule.io.cnt
-    TxModule.io.in.valid := true.B
-    io.out := TxModule.io.txd
-    TxModule.io.in.bits := 0xff.U
-    when(TxModule.io.in.ready){
+    val next_sig = Wire(Bool())
+    when(next_sig){
         dataReg := dataReg + 1.U
-        TxModule.io.in.bits := dataReg + 1.U
     }
+    val tx_dut = Module(new UartTx(125000000,115200))
+    //expose debug signals
+    io.tx_state := tx_dut.io.state
+    io.tx_cnt := tx_dut.io.cnt
+    io.tx_sub_state := tx_dut.io.sub_state
+    io.tx_post_data := tx_dut.io.post_data
+    io.tx_in_ready := tx_dut.io.in.ready
+    io.tx_in_valid := tx_dut.io.in.valid
+    io.tx_in_bits := tx_dut.io.in.bits
+    io.out := tx_dut.io.txd
+    tx_dut.io.in.valid := true.B
+    tx_dut.io.in.bits := dataReg
+    next_sig := tx_dut.io.in.ready
 }
 
 object Uart_Clock_Generator extends App {

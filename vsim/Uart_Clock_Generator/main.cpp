@@ -6,17 +6,23 @@
 #include "VUart_Clock_Generator.h"
 
 int main() {
-    VUart_Clock_Generator* top = new VUart_Clock_Generator;
+    static VUart_Clock_Generator* top = new VUart_Clock_Generator;
     Verilated::traceEverOn(true);
     VerilatedVcdC* tfp = new VerilatedVcdC;
     top->trace(tfp, 99);
     tfp->open("Uart_Clock_Generator.vcd");
+    uint8_t (*get_txd)(void) = []() -> uint8_t {
+        return top -> io_out;
+    };
+    UartRxSim sim_rx(125000000,115200,get_txd);
     printf("Starting simulation...\n");
-    uint64_t max_time = 10000000;
+    uint64_t max_time = 100000;
     uint64_t sim_time = 0;
+    sim_rx.setSilent(1);
     while(sim_time < max_time) {
         if(sim_time <= 3){
             top -> reset = 1;
+            sim_rx.reset();
         } else {
             top -> reset = 0;
         }
@@ -28,6 +34,7 @@ int main() {
         top -> eval();
         tfp->dump(sim_time);
         sim_time++;
+        sim_rx.run();
     }
     tfp->close();
     delete top;

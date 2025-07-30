@@ -7,16 +7,24 @@ class UartTx(freq:Int = 125000000, baud:Int = 1500000 ) extends Module {
   val io = IO(new Bundle {
     val txd = Output(Bool())
     val in = Flipped(Decoupled(UInt(8.W)))
+    val state = Output(Bool())
+    val cnt = Output(UInt(log2Ceil(freq/baud).W))
+    val sub_state = Output(UInt(4.W))
+    val post_data = Output(UInt(10.W))
   })
   val state = RegInit(false.B) 
+  io.state := state 
   //false -> idle
   //true -> sending
   io.in.ready := false.B
   io.txd := true.B // idle state is high
   val sub_state = RegInit(0.U(4.W)) // 0 -> start, 1-8 -> data bits, 9 -> stop
+  io.sub_state := sub_state
   val max_cycle = freq/baud
   val cnt = RegInit(0.U(log2Ceil(freq/baud).W))
+  io.cnt := cnt
   val postReg = RegInit(0xff.U(10.W))
+  io.post_data:=postReg
   when(state === false.B) {
     //IDLE
     io.in.ready := true.B

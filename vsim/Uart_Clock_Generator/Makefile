@@ -5,7 +5,7 @@ exe:
 		-I../../build/uart_clock_generator \
 		--top-module Uart_Clock_Generator \
 		--CFLAGS "-I${BASE_DIR}/csrc/common -I${BASE_DIR}/csrc/Uart" \
-		--exe main.cpp 
+		--exe main.cpp --trace 
 	make -C obj_dir -f VUart_Clock_Generator.mk
 	./obj_dir/VUart_Clock_Generator
 verilog:

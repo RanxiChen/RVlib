@@ -6,28 +6,32 @@
 #include "VUart_Clock_Generator.h"
 
 int main() {
-    static VUart_Clock_Generator dut;
-    uint8_t (*get_txd)(void) = []() -> uint8_t {
-        return dut.io_out;
-    }; 
-    UartRxSim sim_rx(125000000,115200, get_txd);
-    sim_rx.setSilent(1);
+    VUart_Clock_Generator* top = new VUart_Clock_Generator;
+    Verilated::traceEverOn(true);
+    VerilatedVcdC* tfp = new VerilatedVcdC;
+    top->trace(tfp, 99);
+    tfp->open("Uart_Clock_Generator.vcd");
+    printf("Starting simulation...\n");
     uint64_t max_time = 10000000;
     uint64_t sim_time = 0;
-    for(sim_time =0; sim_time < max_time; sim_time++) {
-        if(sim_time ==0){
-            dut.reset = 1;
-            dut.clock = 0;
-            sim_rx.reset();
-        }else{
-            dut.reset = 0;
-            dut.clock ^= 1;
+    while(sim_time < max_time) {
+        if(sim_time <= 3){
+            top -> reset = 1;
+        } else {
+            top -> reset = 0;
         }
-        dut.eval();
-        if(dut.clock)sim_rx.run();
-        if(sim_rx.isDataValid()){
-            //assert(sim_rx.getData() == 0xf1);
-        }
+        top -> clock = 0;
+        top -> eval();
+        tfp->dump(sim_time);
+        sim_time++;
+        top -> clock = 1;
+        top -> eval();
+        tfp->dump(sim_time);
+        sim_time++;
     }
+    tfp->close();
+    delete top;
+    delete tfp;
+    printf("Simulation finished.\n");
     return 0;
 }

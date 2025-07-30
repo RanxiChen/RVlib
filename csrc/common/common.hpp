@@ -14,7 +14,7 @@ T loosely_div(T dividend, T divisor) {
     }else {
         left = divisor - lreminder;
     }
-    if( static_cast<double> (left) < divisor*0.001 ){
+    if( static_cast<double> (left) < divisor*0.01 ){
         return lquotient +1;
     }else {
         return lquotient;

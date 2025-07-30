@@ -128,6 +128,7 @@ public:
         data_byte = data;
         data_10t = ( (data_byte << 1) | (0x0) | (0x1 << 9) ) ;
         clock_cnt = 0;
+        if(! silent)printf("current data_10t is %x\n",data_10t);
     }
     void reset() {
         state = IDLE;
@@ -143,14 +144,17 @@ public:
             clock_cnt++;
             txd = ( data_10t >> (statecnt) ) & 0x1;
             if(clock_cnt == max_cycle-1) {
-                printf("at cycle %lu: clock_cnt count full\n", sim_time);
+                if(! silent)printf("at cycle %lu: clock_cnt count full\n", sim_time);
                 clock_cnt = 0;
+                if(! silent)printf("statecnt from %d",statecnt );
                 if(statecnt < 9) {
                     statecnt += 1;
                 }else {
                     state = IDLE;
                     statecnt = 0;
                 }
+                if(! silent)printf(" to %d\n",statecnt);
+                if(!silent)printf("current txd is %x\n",txd);
             }                        
         }
     }
@@ -171,4 +175,5 @@ private:
     // 0 for start bit, 1-8 for data bits, 9 for stop bit
     int statecnt = 0;
     uint64_t clock_cnt = 0;
+    int silent = 1; // 1 for slient, 0 for debug
 };

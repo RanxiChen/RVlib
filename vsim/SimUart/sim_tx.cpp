@@ -15,14 +15,14 @@ int main(void) {
     int bit_cnt =0;
     SignalLane lane;
     tx_device.reset();
-    //for(int i =0xf0; i < 0xf3; i++) {
-        tx_device.post_byte(0xf3);
-        for(int j =0; j < 12*tx_device.get_max_cycle();j++ ){
+    for(uint8_t i =0xf0; i < 0xf3; i++) {
+        tx_device.post_byte(i);
+        for(int j =0; j < 10*tx_device.get_max_cycle();j++ ){
             tx_device.run();
-            if(tx_device.get_txd() != pdata) {
+            if(tx_device.get_txd() != pdata || tx_device.current_time() - ptime >= tx_device.get_max_cycle()) {
                 cnt = tx_device.current_time() - ptime;
                 bit_cnt = (int)loosely_div(cnt, tx_device.get_max_cycle());
-                printf("At cycle %lu, txd switch to %d since last time point %lu( %d bit )( as %lu cycles ) \n",tx_device.current_time(), tx_device.get_txd(),ptime,bit_cnt,cnt);
+                //printf("At cycle %lu, txd switch to %d since last time point %lu( %d bit )( as %lu cycles ) \n",tx_device.current_time(), tx_device.get_txd(),ptime,bit_cnt,cnt);
                 if(bit_cnt != 0){
                     lane.push_back(std::make_pair(pdata ? '1' : '0', bit_cnt));
                 }
@@ -30,7 +30,7 @@ int main(void) {
                 ptime = tx_device.current_time();
             }
         }
-    //}
+    }
     WaveDrom wave_watcher;
     std::string wave_contents;
     wave_contents = wave_watcher.signallane2wave(lane);

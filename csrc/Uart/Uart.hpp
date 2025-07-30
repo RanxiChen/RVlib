@@ -7,12 +7,11 @@ public:
     UartRxSim(const UartRxSim&) = delete;
     UartRxSim& operator=(const UartRxSim&) = delete;
     uint64_t sim_time =0;
-    uint8_t * rxd_ptr = NULL ;
-    UartRxSim(int freq = 125000000, int baud = 115200, uint8_t * rxd = NULL) {
+    UartRxSim(int freq , int baud , uint8_t (*rxd_func)(void)) {
         this ->freq = freq;
         this ->baud = baud;
         this ->max_cycle = (uint64_t)freq / baud;
-        this ->rxd_ptr = rxd;
+        this ->get_rxd = rxd_func;
     }
     uint8_t getData() {
         return data;
@@ -22,13 +21,13 @@ public:
     }
     void notify() {
         // This function can be used to notify the system that new data is available
-        //printf("Sim Uart get data:%d\n",data);
+        printf("Sim Uart get data:%x at %lu cycles\n",data,sim_time);
         ;
     }
     void run () {
         sim_time++;
         uint8_t rxd = 0;
-        rxd = *rxd_ptr;
+        rxd = get_rxd();
         if(busy == 0) {
             if(rxd == 0){
                 busy = 1;
@@ -46,11 +45,11 @@ public:
         }else {
             //read bit by bit
             if(sim_time - stored_time == max_cycle/4) {
-                vote0 = *rxd_ptr;
+                vote0 = rxd;
             }else if(sim_time - stored_time == max_cycle/2) {
-                vote1 = *rxd_ptr;
+                vote1 = rxd;
             }else if(sim_time - stored_time == max_cycle*3/4) {
-                vote2 = *rxd_ptr;
+                vote2 = rxd;
             }else if(sim_time - stored_time == max_cycle) {
                 stored_time = sim_time;
                 if(vote0 + vote1 + vote2 >= 2) {
@@ -98,6 +97,7 @@ private:
     uint8_t vote1 = 0;
     uint8_t vote2 = 0;
     uint8_t bit_after_vote = 0;
+    uint8_t (*get_rxd)() = NULL; // Function pointer to get rxd value
 };
 
 class UartTxSim {

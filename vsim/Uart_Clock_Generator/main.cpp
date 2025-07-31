@@ -16,8 +16,10 @@ int main() {
     };
     UartRxSim sim_rx(125000000,115200,get_txd);
     printf("Starting simulation...\n");
-    uint64_t max_time = 100000;
+    uint64_t max_time = 10000000;
     uint64_t sim_time = 0;
+    uint8_t clock_data =0;
+    int dumpable=0;
     sim_rx.setSilent(1);
     while(sim_time < max_time) {
         if(sim_time <= 3){
@@ -28,13 +30,26 @@ int main() {
         }
         top -> clock = 0;
         top -> eval();
-        tfp->dump(sim_time);
+        if(dumpable)tfp->dump(sim_time);
         sim_time++;
         top -> clock = 1;
         top -> eval();
-        tfp->dump(sim_time);
+        if(dumpable)tfp->dump(sim_time);
         sim_time++;
         sim_rx.run();
+        if(sim_rx.isDataValid()){
+            assert(sim_rx.getData() == clock_data);
+            clock_data += 1;
+            if(clock_data >= 0xe && clock_data <= 0x11) {
+                dumpable = 1;
+            }else {
+                dumpable = 0;
+            }
+        }
+        if(top ->io_rx_valid){
+            printf("Rx get %x\n",top ->io_rx_data);
+            printf("*******************************\n");
+        }
     }
     tfp->close();
     delete top;

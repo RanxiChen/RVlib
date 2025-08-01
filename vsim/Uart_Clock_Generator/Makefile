@@ -14,3 +14,4 @@ clean:
 	find . -type f -executable -exec rm {} \;
 	rm -rf obj_dir
 	rm -rf ${BASE_DIR}/build/uart_clock_generator/
+	rm -rf *.vcd *.log

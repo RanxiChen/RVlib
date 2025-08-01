@@ -134,7 +134,7 @@ class UartRx(freq: Int, baud: Int) extends Module {
     }.otherwise{
       cnt := cnt + 1.U
     }
-  }.elsewhen(state === data || state === stop) {
+  }.elsewhen(state === data) {
     when(cnt === (max_cycle/4).U) {
       vote0 := rxd_after_sample
       cnt := cnt + 1.U
@@ -146,8 +146,6 @@ class UartRx(freq: Int, baud: Int) extends Module {
       cnt := cnt + 1.U
     }.elsewhen(cnt === (max_cycle-1).U) {
       cnt := 0.U
-      when(bit_valid){
-        when(state === data) {
           //post_data(bit_cnt) := bit_after_vote
           data_bar(bit_cnt) := bit_after_vote
           when(bit_cnt === 7.U) {
@@ -157,19 +155,30 @@ class UartRx(freq: Int, baud: Int) extends Module {
           }.otherwise {
             bit_cnt := bit_cnt + 1.U
           }
-        }.elsewhen(state === stop) {
-          when(bit_after_vote === true.B) {
-            //really stop
-            state := done
-          }.otherwise{
-            state := idle
-          }
-        }
-      }.otherwise{
+    }.otherwise{
+      cnt := cnt + 1.U
+    }
+  }.elsewhen(state === stop) {
+    when(cnt === (max_cycle/4).U) {
+      vote0 := rxd_after_sample
+      cnt := cnt + 1.U
+    }.elsewhen(cnt === (max_cycle/2).U) {
+      vote1 := rxd_after_sample
+      cnt := cnt + 1.U
+    }.elsewhen(cnt === (3*max_cycle/4).U) {
+      vote2 := rxd_after_sample
+      cnt := cnt + 1.U
+    }.elsewhen(cnt === (3*max_cycle/4 + 1).U) {
+      cnt := 0.U
+      //check and convert to done state
+      when(bit_after_vote === true.B) {
+        //stop bit is high, means data is valid
+        state := done
+      }.otherwise {
+        //stop bit is low, means data is invalid
         state := idle
         bit_cnt := 0.U
         data_bar := VecInit(Seq.fill(8)(false.B))
-        cnt := 0.U
       }
     }.otherwise{
       cnt := cnt + 1.U

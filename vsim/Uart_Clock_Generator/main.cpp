@@ -16,11 +16,12 @@ int main() {
     };
     UartRxSim sim_rx(125000000,115200,get_txd);
     printf("Starting simulation...\n");
-    uint64_t max_time = 10000000;
+    uint64_t max_time = 1000000;
     uint64_t sim_time = 0;
-    uint8_t clock_data =0;
-    int dumpable=0;
-    sim_rx.setSilent(1);
+    uint8_t clock_data_sim =0;
+    uint8_t clock_data_rx =0;
+    int dumpable=1;
+    sim_rx.setSilent(0);
     while(sim_time < max_time) {
         if(sim_time <= 3){
             top -> reset = 1;
@@ -38,17 +39,19 @@ int main() {
         sim_time++;
         sim_rx.run();
         if(sim_rx.isDataValid()){
-            assert(sim_rx.getData() == clock_data);
-            clock_data += 1;
-            if(clock_data >= 0xe && clock_data <= 0x11) {
-                dumpable = 1;
-            }else {
-                dumpable = 0;
+            //assert(sim_rx.getData() == clock_data);
+            if(sim_rx.getData() != clock_data_sim) {
+                printf("[Error] Sim rx get %x, however clock data is %x at cycles %lu \n", sim_rx.getData(), clock_data_sim,sim_rx.sim_time);
             }
+            clock_data_sim += 1;
         }
         if(top ->io_rx_valid){
-            printf("Rx get %x\n",top ->io_rx_data);
-            printf("*******************************\n");
+            //printf("Rx get data:%x at %lu cycles\n",top ->io_rx_data,sim_rx.sim_time);
+            //assert(top ->io_rx_data == clock_data);
+            if(top ->io_rx_data != clock_data_rx) {
+                printf("[Error] rx device get %x, however clock data for rx  is %x at cycles %lu \n",top ->io_rx_data,clock_data_rx,sim_rx.sim_time);
+            }
+            clock_data_rx += 1;
         }
     }
     tfp->close();

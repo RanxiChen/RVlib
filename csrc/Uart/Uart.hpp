@@ -31,78 +31,126 @@ public:
     void reset() {
         busy = 0;
         statecnt = 0;
-        stored_time = 0;
         data = 0;
         data_valid = 0;
         vote0 = 0;
         vote1 = 0;
         vote2 = 0;
         bit_after_vote = 0;
+        state_inner_cnt = 0;
     }
-    void run () {
-        sim_time++;
-        uint8_t rxd = 0;
-        rxd = get_rxd();
+    
+
+    void run() {
+        sim_time ++;
+        uint8_t rxd = get_rxd();
         if(busy == 0) {
-            if(rxd == 0){
-                busy = 1;
+            //current state is idle
+            if(rxd == 0) {
                 statecnt = 0;
-                stored_time = sim_time;
+                state_inner_cnt = 0;
+                busy = 1;
                 data = 0;
-                data_valid = 0;
+                if(!silent)printf("sim uart idle -> start at cycles %lu\n", sim_time);
                 return;
             }else {
+                //still idle
+                statecnt = 0;
+                state_inner_cnt = 0;
                 busy = 0;
-                data_valid = 0;
                 data = 0;
-                return;
             }
         }else {
-            //read bit by bit
-            if(sim_time - stored_time == max_cycle/4) {
-                vote0 = rxd;
-            }else if(sim_time - stored_time == max_cycle/2) {
-                vote1 = rxd;
-            }else if(sim_time - stored_time == max_cycle*3/4) {
-                vote2 = rxd;
-            }else if(sim_time - stored_time == max_cycle) {
-                if(!silent)printf("At rx cycle %lu ", sim_time);
-                stored_time = sim_time;
-                if(vote0 + vote1 + vote2 >= 2) {
-                    bit_after_vote = 1;
-                }else {
-                    bit_after_vote = 0;
-                }
-                if(!silent)printf("get bit %d,",bit_after_vote);
-                if(!silent)printf("state switch from %d ",statecnt);
-                if(statecnt == 0) {
-                    // Start bit
-                    if(bit_after_vote == 0) {
-                        statecnt++;
+            state_inner_cnt++;
+            if(statecnt == 0) {
+                //check start bit
+                if(state_inner_cnt == max_cycle >> 1){
+                    //0.5 bits
+                    if(rxd == 0) {
+                        //really start bit
+                        if(!silent)printf("At 0.5 bits, really start bit detected at cycles %lu\n", sim_time);
+                        return ;
                     }else {
-                        busy =0; // Invalid start bit, reset state
+                        //not start bit
+                        if(!silent)printf("At 0.5 bits, not start bit detected at cycles %lu\n", sim_time);
+                        busy = 0;
                         statecnt = 0;
+                        state_inner_cnt = 0;
+                        data = 0;
+                        return;
                     }
-                }else if(statecnt < 9) {
-                    // Data bits
-                    data = bit_after_vote << (statecnt-1) | data;
-                    statecnt++;
-                }else if(statecnt == 9) {
-                    // Stop bit
-                    if(bit_after_vote == 1) {
-                        data_valid = 1; // Data is valid
-                        notify();
-                    }else {
-                        data_valid = 0; // Invalid stop bit, reset state
-                    }
-                    busy = 0; // Transmission complete
-                    statecnt = 0; // Reset state counter
                 }
-                if(!silent)printf("to %d\n",statecnt);
+                if(state_inner_cnt >= max_cycle) {
+                    //jump to next state
+                    if(!silent)printf("At 1 bits, jump to next state at cycles %lu\n", sim_time);
+                    state_inner_cnt = 0;
+                    statecnt = 1;
+                    data = 0;
+                    return;
+                }
+            }else if(statecnt >= 1 && statecnt <= 8) {
+                //data bits
+                state_inner_cnt++;
+                if(state_inner_cnt == max_cycle >> 2) {
+                    vote0 = rxd;
+                    if(!silent)printf("At %d bits, vote0 is %x at cycles %lu\n", statecnt, vote0, sim_time);
+                    return;
+                }else if (state_inner_cnt == max_cycle >> 1) {
+                    vote1 = rxd;
+                    if(!silent)printf("At %d bits, vote1 is %x at cycles %lu\n", statecnt, vote1, sim_time);
+                    return;
+                }else if (state_inner_cnt == (max_cycle * 3) >> 2) {
+                    vote2 = rxd;
+                    if(!silent)printf("At %d bits, vote2 is %x at cycles %lu\n", statecnt, vote2, sim_time);
+                    bit_after_vote = (vote0 + vote1 + vote2)  >=2;
+                    return;
+                }else if (state_inner_cnt >= max_cycle) {
+                    //store bits
+                    data = bit_after_vote << (statecnt - 1) | data;
+                    //jump to next state
+                    if(!silent)printf("At %d bits, jump to next state at cycles %lu\n", statecnt, sim_time);
+                    state_inner_cnt = 0;
+                    statecnt += 1;
+                    return;
+                }
+            }else if(statecnt == 9) {
+                //stop bit
+                state_inner_cnt++;
+                if(state_inner_cnt == max_cycle >> 1) {
+                    //0.5 bits
+                    if(rxd == 1) {
+                        //really stop bit
+                        if(!silent)printf("At 0.5 bits, really stop bit detected at cycles %lu\n", sim_time);
+                        data_valid = 1;
+                        notify();
+                        busy = 0;
+                        statecnt = 0;
+                        state_inner_cnt = 0;
+                        return;
+                    }else {
+                        //not stop bit
+                        if(!silent)printf("At 0.5 bits, not stop bit detected at cycles %lu\n", sim_time);
+                        busy = 0;
+                        statecnt = 0;
+                        state_inner_cnt = 0;
+                        data_valid = 0;
+                        return;
+                    }
+                }
+                if(state_inner_cnt >= max_cycle) {
+                    //jump to next state
+                    if(!silent)printf("At 1 bits, jump to next state at cycles %lu\n", sim_time);
+                    busy = 0;
+                    statecnt = 0;
+                    state_inner_cnt = 0;
+                    data_valid = 0;
+                    return;
+                }
             }
         }
     }
-private:
+
+   private:
     int freq; // Frequency of the UART clock
     int baud; // Baud rate for UART communication
     uint8_t data =0;
@@ -111,13 +159,13 @@ private:
     uint64_t max_cycle = 0;
     int statecnt = 0; // State counter for bit position
     uint8_t busy = 0; // 0 for idle, 1 for busy
-    uint64_t stored_time = 0;
     uint8_t vote0 = 0;
     uint8_t vote1 = 0;
     uint8_t vote2 = 0;
     uint8_t bit_after_vote = 0;
     uint8_t (*get_rxd)() = NULL; // Function pointer to get rxd value
     uint8_t silent = 0; // 1 for silent, 0 for debug
+    uint64_t state_inner_cnt = 0;
 };
 
 class UartTxSim {
